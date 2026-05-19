@@ -20,7 +20,9 @@ __pycache__/
 *.pyd
 .env
 
+# Arquivos de contexto local
+*_contxt.txt
+
 # Logs e temporários
 *.log
 *.tmp
-*.txt

@@ -6,29 +6,33 @@ Conjunto de scripts Python/Selenium para automatizar o lançamento e a extraçã
 
 ## Scripts
 
-### `lancamento.py` — Lançamento de aulas
+### `lancador.py` — Lançamento de aulas *(versão atual)*
 
-Lê a planilha `planejamento.xlsx` e lança automaticamente as aulas no diário eletrônico, turma por turma.
+Script principal. Lê a planilha `planejamento.xlsx` e lança automaticamente as aulas no diário eletrônico, turma por turma, com detecção automática de sessão e prevenção de duplicatas.
 
 **Fluxo:**
 
-1. Carrega as aulas da aba `preencher` e as 21 combinações turma+matéria da aba `Turmas e materias`
-2. Abre o Chrome e aguarda o professor fazer login e resolver o CAPTCHA manualmente
-3. Executa um diagnóstico comparando os cards do site com o Excel (verifica se todas as turmas estão mapeadas)
-4. Para cada turma, verifica as aulas já lançadas no site (evita duplicatas) e lança apenas as novas
-5. Ao final de cada turma, retorna à lista de cards via URL
+1. Carrega as aulas da aba `preencher` e converte as datas para `DD/MM/YYYY`
+2. Abre o Chrome (Selenium Manager — sem dependência de driver externo) e detecta sessão ativa pela URL; aguarda login manual se necessário
+3. Faz scroll na lista de cards para disparar o lazy loading e salva os metadados de cada turma
+4. Para cada turma com aulas no Excel:
+   - Clica no card da turma e abre a aba Aulas
+   - Faz scraping das datas já lançadas no site
+   - Remove de ambas as tabelas (local e global) as datas que já existem no site
+   - Lança apenas as aulas novas
+5. Retorna à lista de cards via URL ao final de cada turma
 
 **Como usar:**
 
 ```
-python lancamento.py
+python lancador.py
 ```
 
 ---
 
 ### `diario_ded.py` — Extração de aulas
 
-Percorre todas as turmas do diário eletrônico e exporta as aulas já lançadas para uma planilha Excel formatada.
+Percorre todas as turmas do diário eletrônico e exporta as aulas já lançadas para uma planilha Excel formatada. Útil para backup ou conferência do que está no site.
 
 **Fluxo:**
 
@@ -45,11 +49,17 @@ python diario_ded.py
 
 ---
 
+### `lancamento.py` — Lançamento de aulas *(legado)*
+
+Versão anterior do script de lançamento. Mantida como referência. Usa `webdriver-manager` para gerenciar o ChromeDriver e exige login manual com CAPTCHA. Prefira `lancador.py`.
+
+---
+
 ## Planilha de entrada (`planejamento.xlsx`)
 
-| Aba                 | Conteúdo                                                          |
-| ------------------- | ----------------------------------------------------------------- |
-| `preencher`         | Aulas a lançar: Turma, Disciplina, Data, ConteúdoLecionado, etc.  |
+| Aba | Conteúdo |
+| --- | --- |
+| `preencher` | Aulas a lançar: Turma, Disciplina, Data, ConteúdoLecionado, etc. |
 | `Turmas e materias` | Lista das combinações turma+matéria+turno que o professor leciona |
 
 ---
@@ -60,12 +70,15 @@ python diario_ded.py
 pip install -r requirements.txt
 ```
 
-Dependências principais: `selenium`, `webdriver-manager`, `pandas`, `openpyxl`
+Dependências principais: `selenium`, `pandas`, `openpyxl`
+
+> `lancador.py` usa o Selenium Manager nativo (Selenium 4.6+) — não é necessário instalar `webdriver-manager`.
 
 ---
 
 ## Observações
 
 - O login é sempre manual (CAPTCHA exige intervenção humana)
-- O script `lancamento.py` é idempotente: pode ser interrompido e reexecutado sem duplicar lançamentos
+- `lancador.py` é idempotente: pode ser interrompido e reexecutado sem duplicar lançamentos
 - Navegação de volta entre turmas é feita via URL, não pelo botão voltar do site (mais confiável)
+- Arquivos de contexto (`*_contxt.txt`) e planilhas (`*.xlsx`) estão no `.gitignore`
