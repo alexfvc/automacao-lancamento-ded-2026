@@ -1,0 +1,26 @@
+# Ambiente virtual Python
+Lib/
+Scripts/
+Include/
+share/
+pyvenv.cfg
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Dados sensíveis / planilhas locais
+*.xlsx
+*.xls
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Logs e temporários
+*.log
+*.tmp
+*.txt
