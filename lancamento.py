@@ -191,13 +191,13 @@ def select_turma(driver, tabela):
             disciplina_card = linhas[3].strip()
 
             filtro = (tabela["Turma"] == turma_card) & (tabela["Disciplina"] == disciplina_card)
-            aulas  = tabela[filtro].reset_index(drop=True)
+            aulas  = tabela[filtro].copy()  # mantém índices originais para drop posterior
 
             if aulas.empty:
                 print(f"  [{i:02d}] {turma_card} -> sem aulas, pulando.")
                 continue
 
-            print(f"\n[{i:02d}] {turma_card} | {disciplina_card} -> {len(aulas)} aula(s)")
+            print(f"\n[{i:02d}] {turma_card} | {disciplina_card} -> {len(aulas)} aula(s) no Excel")
 
             cards[i].click()
             time.sleep(1)
@@ -211,24 +211,32 @@ def select_turma(driver, tabela):
             time.sleep(1)
             driver.implicitly_wait(5)
 
-            # Lê aulas já lançadas para evitar duplicatas
+            # Diagnóstico: remove de ambas as tabelas as datas já lançadas no site
             ja_lancadas = obter_aulas_existentes(driver)
-            if ja_lancadas:
-                print(f"   Já lançadas no site: {sorted(ja_lancadas)}")
+            mask_dup = aulas["Data"].str[:5].isin(ja_lancadas)
+            if mask_dup.any():
+                datas_dup = sorted(aulas.loc[mask_dup, "Data"].tolist())
+                idx_dup   = aulas[mask_dup].index.tolist()
+                print(f"   [DIAG] Já lançadas no site ({len(datas_dup)}): {datas_dup}")
+                aulas = aulas[~mask_dup].reset_index(drop=True)
+                tabela.drop(index=idx_dup, inplace=True)
+                print(f"   [DIAG] {len(datas_dup)} linha(s) removida(s) de ambas as tabelas.")
+            else:
+                aulas = aulas.reset_index(drop=True)
 
-            novas = puladas = 0
+            if aulas.empty:
+                print(f"   Nenhuma aula nova para lançar, pulando.")
+                driver.get(SITE_URL)
+                time.sleep(3)
+                continue
+
+            novas = 0
             for _, row in aulas.iterrows():
-                data_ddmm = row["Data"][:5]  # DD/MM de DD/MM/YYYY
-                if data_ddmm in ja_lancadas:
-                    print(f"   [SKIP] {row['Data']}: já existe no diário.")
-                    puladas += 1
-                    continue
-                print(f"   [+]    {row['Data']}: {str(row['ConteudoLecionado'])[:60]}...")
+                print(f"   [+] {row['Data']}: {str(row['ConteudoLecionado'])[:60]}...")
                 lancamento(driver, row["Data"], row["ConteudoLecionado"])
-                ja_lancadas.add(data_ddmm)  # evita relançar a mesma data em caso de retry
                 novas += 1
 
-            print(f"   Resultado: {novas} lançada(s) | {puladas} já existia(m), pulada(s).")
+            print(f"   Resultado: {novas} lançada(s).")
             driver.get(SITE_URL)
             time.sleep(3)
             driver.implicitly_wait(5)
